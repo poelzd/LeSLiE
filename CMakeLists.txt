@@ -17,11 +17,18 @@ if (EIGEN_FOUND)
   add_definitions ("-DENABLE_EIGEN")
 endif()
 
+# TCLAP command line parser
+include (FindTCLAP) 
+if (TCLAP_FOUND)
+  add_definitions ("-DENABLE_TCLAP")
+endif()
+
 #-------------------------------------------------------------------------------
 # include libraries
 #-------------------------------------------------------------------------------
 set (COMMON_INCLUDES
   ${EIGEN_INCLUDES}
+  ${TCLAP_INCLUDES}
   )
 include_directories (${COMMON_INCLUDES})
 
