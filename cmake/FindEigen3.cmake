@@ -14,7 +14,7 @@ find_path(EIGEN_INCLUDES NAMES signature_of_eigen3_matrix_library
   PATHS
   /usr/include
   /usr/local/include
-  ${HYENA_CORE_BASE_PATH}/contrib/eigen
+  ${LESLIE_BASE_PATH}/contrib/eigen
   PATH_SUFFIXES eigen3 eigen
   )
  

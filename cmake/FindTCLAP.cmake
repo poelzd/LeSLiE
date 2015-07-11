@@ -13,7 +13,7 @@ find_path(TCLAP_INCLUDES NAMES tclap/CmdLine.h
   PATHS
   /usr/include
   /usr/local/include
-  ${HYENA_CORE_BASE_PATH}/contrib/tclap/tclap/include
+  ${LESLIE_BASE_PATH}/contrib/tclap/tclap/include
   )
 
 # handle the QUIETLY and REQUIRED arguments and set TCLAP_FOUND to TRUE if

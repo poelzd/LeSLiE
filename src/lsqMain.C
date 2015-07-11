@@ -15,71 +15,16 @@
 #include <tclap/CmdLine.h>
 //
 #include <algorithm>
+//
+#include "leslie/filereadertxt.hpp"
+//
+#include "leslie/functionspace1d.hpp"
+//
+#include "leslie/functions1d.hpp"
 
-template <typename s_type, typename v_type, typename m_type,
-          typename base_function>
-class Basis
-{
-private:
-  Eigen::Matrix<base_function,Eigen::Dynamic,1> baseFunctions;
-  unsigned int dimension;
-public:
-  // ctor
-  Basis() : baseFunctions() {}
-  Basis(int i) : baseFunctions(i), dimension(i) {}
+using namespace leslie;
 
-  // member functions
-  unsigned int getDim()
-  {
-    return dimension;
-  }
-
-  void addFunction(const base_function& func, int i)
-  {
-    baseFunctions(i) = func;
-  }
-
-  // evaluate overloads
-  s_type evaluate(const int& i, const s_type& x)
-  {
-    return baseFunctions(i).evaluate(x);
-  }
-  void evaluate(const int& i, const s_type& x, s_type& y)
-  {
-    y = baseFunctions(i).evaluate(x);
-  }
-  void evaluate(const s_type& x, v_type& y)
-  {
-    for (unsigned int k=0; k<dimension; ++k)
-      y(k) = baseFunctions(k).evaluate(x);
-  }
-  // evaluation of entire basis along discrete axis (use to compute matrix)
-  void evaluate(const v_type& x, m_type& y)
-  {
-    for (unsigned int k=0; k<dimension; ++k)
-      for (unsigned int l=0; l<x.size(); ++l)
-        y(l,k) = baseFunctions(k).evaluate(x(l));
-  }
-
-};
-
-template<typename s_type>
-class base_function
-{
-private:
-  s_type shape;
-public:
-  // ctor
-  base_function() : shape() {}
-  base_function(s_type mshape) : shape(mshape) {}
-  s_type evaluate(const s_type& x)
-  {
-    return pow(x,shape);
-  }
-};
-
-
-///////////////////////////////// MAIN //////////////////////////////////////
+///////////////////////////////// MAIN /////////////////////////////////////////
 int main( int argc, char* argv[] )
 {
   // Wrap everything in a try block.  Do this every time, 
@@ -88,7 +33,7 @@ int main( int argc, char* argv[] )
     
   // Define the command line object.
   TCLAP::CmdLine cmd("Solve linear least square fit.", 
-                       ' ', "LSQ 0.1"); 
+                       ' ', "LeSLiE 0.1"); 
 
   // add the input file as a required unlabeled value to the command line
 
@@ -100,17 +45,11 @@ int main( int argc, char* argv[] )
   inpFile( "filename", ".csv file containing x and y values",
            true, "default", "string", cmd );
   
-  
-  //cmd.add( inpFile );
-  //cmd.add( nameArg );
-
   // Parse the args.
   cmd.parse( argc, argv );
 
   const int degree = lsqOrder.getValue();
   const std::string filename = inpFile.getValue();
-  std::cout << degree << std::endl;
-  std::cout << filename << std::endl;
 
   // typedefs
   typedef double scalar_type;
@@ -120,96 +59,45 @@ int main( int argc, char* argv[] )
           vector_type;
   
 
-  // set up data pair for testing purposes
-  matrix_type X;
+  // set up data pair
   vector_type xs, ys;
-  
-  /*
-  int i=0;
-  std::cout << "\ncmdline args count = " << argc << std::endl;
+    
+  //////////////////////////// READ FROM FILE //////////////////////////////////
+  filereader<scalar_type,vector_type> myreader(filename);
+  myreader.printFileName();
+  myreader(xs,ys);
+  //////////////////////////////////////////////////////////////////////////////
 
-  // First argument is executable name only
-  std::cout << "\nexe name= " << argv[0] << std::endl;
+  //////////////////////////// SET UP FUNCTION SPACE ///////////////////////////
+  // initialize dim-0 space
+  FunctionSpace1d<scalar_type,vector_type,matrix_type,
+                  Function1d<scalar_type,vector_type,Polynomial1d> > 
+    mySpace(0);
 
-  for (i=1; i < argc; i++) {
-    std::cout << "\narg " <<  i << " = " << argv[i] << std::endl;
-  }
-  */
-  
-  //////////////////////////// READ FROM FILE ////////////////////////////
-
-  // TODO: WRITE FILEREADER
-
-  // convert string to char-array for fstream
-  char fname[1024];
-  strncpy(fname, filename.c_str(), sizeof(fname));
-  fname[sizeof(fname) - 1] = 0;
-  std::fstream myfile(fname, std::ios_base::in);
-  //std::fstream myfile("../input/input.csv", std::ios_base::in);
-
-  // set up std vectors of zero length (push_back will expand it later on)
-  std::vector<scalar_type>*inpvec = new std::vector<scalar_type>(0);
-  float a;
-  while (myfile >> a)
+  // in basis
+  for (unsigned int k=0; k<=degree; ++k)
   {
-    inpvec->push_back(a);
+    mySpace.addFunction(Function1d<scalar_type,vector_type,Polynomial1d>(k));
   }
 
-  std::cout << (*inpvec)[0] << std::endl;
+  // Define matrix
+  matrix_type Mat(xs.size(),degree+1);
+  Mat.setZero();
+  // Define right hand side and solution
+  vector_type rhs(degree+1), sol(degree+1);
 
-  vector_type inx(inpvec->size()/2), iny(inpvec->size()/2);
-
-  for (unsigned int p=0; p<inx.size(); ++p)
-  {
-    inx(p) = (*inpvec)[p];
-    iny(p) = (*inpvec)[p+inx.size()];
-  }
-
-  delete inpvec;
-
-  std::cout << "inx" << std::endl;
-  std::cout << inx << std::endl;
-  std::cout << "iny" << std::endl;
-  std::cout << iny << std::endl;
-  std::cout << std::endl;
-
-  xs = inx;
-  ys = iny;
-
-  ///////////////////////////////////////////////////////////////////////
-
-  Eigen::Matrix<base_function<scalar_type>,Eigen::Dynamic,1> mypoint(degree+1);
-  for (unsigned int k=0; k<mypoint.size(); ++k)
-  {
-    mypoint(k) = base_function<scalar_type>(k);
-  }
-
-  matrix_type Mat(xs.rows(),degree+1);
-  matrix_type S(Mat.cols(),Mat.cols());
-  vector_type rslt(Mat.cols()), right(Mat.cols());
-  
-  // build basis
-  Basis<scalar_type, vector_type, matrix_type, base_function<scalar_type> >
-    myBase(degree+1);
-
-  //std::cout << myBase.getDim() << std::endl;
-
-  // fill basis
-  for (unsigned int l=0; l<=degree; ++l)
-    myBase.addFunction(mypoint(l),l);
-
-  myBase.evaluate(xs,Mat);
-  std::cout << Mat << std::endl;
+  // Compute matrix
+  mySpace.evaluate(xs,Mat);
 
   // compute rhs
-  right.noalias() = Mat.transpose()*ys;
+  rhs.noalias() = Mat.transpose()*ys;
 
   Eigen::PartialPivLU<matrix_type> plu;
   plu.compute(Mat.transpose()*Mat);
-  rslt = plu.solve(right);
+  sol = plu.solve(rhs);
 
   std::cout << "Solution" << std::endl;
-  std::cout << rslt << std::endl;
+  std::cout << sol << std::endl;
 
   return 0;
 
