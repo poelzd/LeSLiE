@@ -1,5 +1,9 @@
 // classes that set up the function space of the llsq
 
+// include guard
+#ifndef FUNCTIONSPACE1D_HPP
+#define FUNCTIONSPACE1D_HPP
+
 namespace leslie
 {
   template <typename s_type, typename v_type, typename m_type,
@@ -71,3 +75,5 @@ namespace leslie
   };
 
 }
+
+#endif // FUNCTIONSPACE1D_HPP

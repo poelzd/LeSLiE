@@ -6,6 +6,7 @@
 
 namespace leslie
 {
+
   // filereader class
   template<typename s_type, typename v_type>
   class filereader
@@ -20,15 +21,17 @@ namespace leslie
       fname[sizeof(fname) - 1] = 0;
     }
 
-    void printFileName()
+    char* getFileName()
     {
-      std::cout << fname << std::endl;
+      return fname;
     }
     
     // overload operator() to fill up x-data and y-data
     void operator() (v_type& vec_x, v_type& vec_y)
     {
-      std::fstream filestream(fname, std::ios_base::in);
+      //std::fstream filestream(fname, std::ios_base::in);
+      std::ifstream filestream;
+      filestream.open(fname);
       // set up std vectors of zero length (push_back will expand it later on)
       std::vector<s_type> inpvec(0);
       float a;
@@ -36,8 +39,9 @@ namespace leslie
       {
         inpvec.push_back(a);
       }
+      filestream.close();
       
-      // TODO: SET UP ERROR WHEN SIZE OF INPFEC IS NOT EVEN!!! (INP FILE IS
+      // TODO: SET UP ERROR WHEN SIZE OF INPVEC IS NOT EVEN!!! (INP FILE IS
       // WRONG)
 
       // resize input arrays
